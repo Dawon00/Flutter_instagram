@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
+import './style.dart' as style;
 
 void main() {
-  runApp(MaterialApp(
-      theme: ThemeData(
-          iconTheme: IconThemeData(color: Colors.blue),
-          appBarTheme: AppBarTheme(
-            titleTextStyle: TextStyle(color: Colors.black, fontSize: 25),
-            color: Colors.white,
-            actionsIconTheme: IconThemeData(color: Colors.black),
-          ),
-          textTheme: TextTheme(bodyText2: TextStyle(color: Colors.black))),
-      home: MyApp()));
+  runApp(MaterialApp(theme: style.theme, home: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -21,9 +13,25 @@ class MyApp extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text("Instagram"),
-        actions: [Icon(Icons.add_box_outlined, size: 25)],
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add_box_outlined),
+            onPressed: () {},
+            iconSize: 30,
+          )
+        ],
       ),
-      body: Icon(Icons.star),
+      body: Text('test message'),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        iconSize: 25,
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined), label: 'home'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_bag_outlined), label: 'shop'),
+        ],
+      ),
     );
   }
 }
