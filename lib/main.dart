@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import './style.dart' as style;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/rendering.dart'; //for scroll
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 void main() {
   runApp(MaterialApp(theme: style.theme, home: MyApp()));
@@ -16,7 +19,36 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   var tab = 0; //현재 탭
-  var data = [];
+  var data = []; //게시물 데이터
+  var userImage;
+  var userContent; //유저가 입력한 글
+
+  setUserContent(a) {
+    setState(() {
+      userContent = a;
+    });
+  }
+
+  addMyData() {
+    var myData = {
+      "id": data.length,
+      "image": userImage,
+      "likes": 5,
+      "date": "July 25",
+      "content": userContent,
+      "liked": false,
+      "user": "John Kim"
+    };
+    setState(() {
+      data.insert(0, myData);
+    });
+  }
+
+  addData(a) {
+    setState(() {
+      data.add(a);
+    });
+  }
 
   getData() async {
     var result = await http
@@ -43,7 +75,24 @@ class _MyAppState extends State<MyApp> {
         actions: [
           IconButton(
             icon: Icon(Icons.add_box_outlined),
-            onPressed: () {},
+            onPressed: () async {
+              var picker = ImagePicker();
+              var image = await picker.pickImage(source: ImageSource.gallery);
+              if (image != null) {
+                setState(() {
+                  userImage = File(image.path);
+                });
+              }
+
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (c) => Upload(
+                            userImage: userImage,
+                            setUserContent: setUserContent,
+                            addMyData: addMyData,
+                          )));
+            },
             iconSize: 30,
           )
         ],
@@ -69,23 +118,87 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-class Home extends StatelessWidget {
-  const Home({Key? key, this.data}) : super(key: key);
-  final data;
+class Upload extends StatelessWidget {
+  const Upload({Key? key, this.userImage, this.setUserContent, this.addMyData})
+      : super(key: key);
+  final userImage;
+  final setUserContent;
+  final addMyData;
 
   @override
   Widget build(BuildContext context) {
-    if (data.isNotEmpty) {
+    return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+              onPressed: () {
+                addMyData();
+              },
+              icon: Icon(Icons.send))
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image.file(userImage),
+          Text('이미지 업로드 화면'),
+          TextField(
+            onChanged: (text) {
+              setUserContent(text);
+            },
+          ),
+          IconButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              icon: Icon(Icons.close)),
+        ],
+      ),
+    );
+  }
+}
+
+class Home extends StatefulWidget {
+  const Home({
+    Key? key,
+    this.data,
+  }) : super(key: key);
+  final data;
+
+  @override
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  var scroll = ScrollController();
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    scroll.addListener(() {
+      if (scroll.position.pixels == scroll.position.maxScrollExtent) {
+        print('바닥');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.data.isNotEmpty) {
       return ListView.builder(
-          itemCount: 3,
+          itemCount: widget.data.length,
+          controller: scroll,
           itemBuilder: (c, i) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Image.network(data[i]['image']),
-                Text(data[i]['user']),
-                Text(data[i]['likes'].toString()),
-                Text(data[i]['content']),
+                widget.data[i]['image'].runtimeType == String
+                    ? Image.network(widget.data[i]['image'])
+                    : Image.file(widget.data[i][
+                        'image']), //user가 추가한 데이터               Text(widget.data[i]['user']),
+                Text('좋아요 ${widget.data[i]['likes'].toString()}'),
+                Text(widget.data[i]['content']),
               ],
             );
           });
