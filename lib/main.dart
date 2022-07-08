@@ -5,9 +5,15 @@ import 'dart:convert';
 import 'package:flutter/rendering.dart'; //for scroll
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(MaterialApp(theme: style.theme, home: MyApp()));
+  runApp(ChangeNotifierProvider(
+    create: (c) => Store1(),
+    child: MaterialApp(theme: style.theme, home: MyApp()),
+  ));
 }
 
 class MyApp extends StatefulWidget {
@@ -22,6 +28,15 @@ class _MyAppState extends State<MyApp> {
   var data = []; //게시물 데이터
   var userImage;
   var userContent; //유저가 입력한 글
+
+  saveData() async {
+    var storage = await SharedPreferences.getInstance();
+
+    var map = {'age': 20};
+    storage.setString('map', jsonEncode(map));
+    var result = storage.getString('map') ?? '없음';
+    print(jsonDecode(result)['age']);
+  }
 
   setUserContent(a) {
     setState(() {
@@ -64,6 +79,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    saveData();
     getData();
   }
 
@@ -197,6 +213,13 @@ class _HomeState extends State<Home> {
                     ? Image.network(widget.data[i]['image'])
                     : Image.file(widget.data[i][
                         'image']), //user가 추가한 데이터               Text(widget.data[i]['user']),
+                GestureDetector(
+                  child: Text(widget.data[i]['user']),
+                  onTap: () {
+                    Navigator.push(
+                        context, CupertinoPageRoute(builder: (c) => Profile()));
+                  },
+                ),
                 Text('좋아요 ${widget.data[i]['likes'].toString()}'),
                 Text(widget.data[i]['content']),
               ],
@@ -205,5 +228,60 @@ class _HomeState extends State<Home> {
     } else {
       return Text('loading...');
     }
+  }
+}
+
+class Store1 extends ChangeNotifier {
+  //state 보관
+  var name = 'john kim';
+  var follower = 0;
+  bool followed = false;
+  var followed_string = '팔로우';
+  changeName() {
+    name = 'john park';
+    notifyListeners(); //rerendering
+  }
+
+  addfollower() {
+    if (followed == false) {
+      follower += 1;
+      followed = true;
+      followed_string = '팔로잉';
+      notifyListeners();
+    } else {
+      follower -= 1;
+      followed = false;
+      followed_string = '팔로우';
+      notifyListeners();
+    }
+  }
+}
+
+class Profile extends StatelessWidget {
+  const Profile({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(context.watch<Store1>().name),
+      ),
+      body: Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.grey,
+          ),
+          Text('팔로워 ${context.watch<Store1>().follower.toString()} 명'),
+          ElevatedButton(
+              onPressed: () {
+                context.read<Store1>().changeName();
+                context.read<Store1>().addfollower();
+              },
+              child: Text(context.watch<Store1>().followed_string))
+        ],
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      ),
+    );
   }
 }
