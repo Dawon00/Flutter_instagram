@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:instagram/notification.dart';
 import './style.dart' as style;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -9,9 +10,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
+import 'notification.dart';
+
 void main() {
-  runApp(ChangeNotifierProvider(
-    create: (c) => Store1(),
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (c) => Store1()),
+      ChangeNotifierProvider(create: (c) => Store2()),
+    ],
     child: MaterialApp(theme: style.theme, home: MyApp()),
   ));
 }
@@ -79,6 +85,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    initNotification();
     saveData();
     getData();
   }
@@ -86,6 +93,12 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        child: Text('+'),
+        onPressed: () {
+          showNotification2();
+        },
+      ),
       appBar: AppBar(
         title: Text("Instagram"),
         actions: [
@@ -231,12 +244,26 @@ class _HomeState extends State<Home> {
   }
 }
 
+class Store2 extends ChangeNotifier {
+  var name = 'john kim';
+}
+
 class Store1 extends ChangeNotifier {
   //state 보관
   var name = 'john kim';
   var follower = 0;
   bool followed = false;
   var followed_string = '팔로우';
+  var profileImage = [];
+
+  getData() async {
+    var result = await http
+        .get(Uri.parse('https://codingapple1.github.io/app/profile.json'));
+    var result2 = jsonDecode(result.body);
+    profileImage = result2;
+    notifyListeners();
+  }
+
   changeName() {
     name = 'john park';
     notifyListeners(); //rerendering
@@ -257,31 +284,65 @@ class Store1 extends ChangeNotifier {
   }
 }
 
-class Profile extends StatelessWidget {
+class Profile extends StatefulWidget {
   const Profile({Key? key}) : super(key: key);
+
+  @override
+  State<Profile> createState() => _ProfileState();
+}
+
+class _ProfileState extends State<Profile> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    context.read<Store1>().getData();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.watch<Store1>().name),
-      ),
-      body: Row(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.grey,
+        appBar: AppBar(
+          title: Text(context.watch<Store2>().name),
+        ),
+        body: CustomScrollView(slivers: [
+          SliverAppBar(title: Text('Appbar 입니다.')),
+          SliverToBoxAdapter(
+            child: ProfileHeader(),
           ),
-          Text('팔로워 ${context.watch<Store1>().follower.toString()} 명'),
-          ElevatedButton(
-              onPressed: () {
-                context.read<Store1>().changeName();
-                context.read<Store1>().addfollower();
-              },
-              child: Text(context.watch<Store1>().followed_string))
-        ],
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-      ),
+          SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (c, i) =>
+                    Image.network(context.watch<Store1>().profileImage[i]),
+
+                childCount: context.watch<Store1>().profileImage.length, //격자 개수
+              ),
+              gridDelegate:
+                  SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2)),
+        ]));
+  }
+}
+
+class ProfileHeader extends StatelessWidget {
+  const ProfileHeader({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        CircleAvatar(
+            radius: 30,
+            backgroundImage:
+                NetworkImage(context.watch<Store1>().profileImage.toString())),
+        Text('팔로워 ${context.watch<Store1>().follower.toString()} 명'),
+        ElevatedButton(
+            onPressed: () {
+              context.read<Store1>().changeName();
+              context.read<Store1>().addfollower();
+            },
+            child: Text(context.watch<Store1>().followed_string))
+      ],
     );
   }
 }
